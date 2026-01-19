@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>光祐居服員考核系統 (v4 雲端協作版)</title>
+    <title>光祐居服員考核系統 (v4.1 補登版)</title>
     
     <!-- React & Tailwind -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -21,7 +21,7 @@
     <!-- Firebase SDK (Module) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, doc, setDoc, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         // 用戶提供的設定
         const firebaseConfig = {
@@ -34,36 +34,28 @@
             measurementId: "G-201C6BE86Z"
         };
 
-        // 初始化 Firebase
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
-
-        // 定義資料庫路徑 (Collection: caregiver_system, Doc: data)
         const DOC_REF = doc(db, "caregiver_system", "main_data");
 
-        // 將 Firebase 功能掛載到 window 以便 React 使用
         window.FirebaseAPI = {
-            // 訂閱資料變更 (Real-time listener)
             subscribe: (onUpdate) => {
                 return onSnapshot(DOC_REF, (docSnap) => {
                     if (docSnap.exists()) {
                         onUpdate(docSnap.data());
                     } else {
-                        // 如果資料庫是空的，初始化它
                         const initialData = { staffList: [], allData: {} };
                         setDoc(DOC_REF, initialData);
                         onUpdate(initialData);
                     }
                 });
             },
-            // 儲存完整資料 (Debounced save logic will be in React)
             saveAll: async (staffList, allData) => {
                 try {
                     await setDoc(DOC_REF, { staffList, allData }, { merge: true });
                     return true;
                 } catch (e) {
                     console.error("儲存失敗:", e);
-                    alert("儲存失敗，請檢查網路連線");
                     return false;
                 }
             }
@@ -74,7 +66,7 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useMemo, useRef, useCallback } = React;
+        const { useState, useEffect, useRef } = React;
 
         // --- Icons ---
         const Icons = {
@@ -83,7 +75,6 @@
             Plus: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M5 12h14"/><path d="M12 5v14"/></svg>,
             Trash2: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>,
             Trophy: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>,
-            AlertCircle: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>,
             Calendar: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>,
             Edit: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>,
             Save: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>,
@@ -91,7 +82,7 @@
             Upload: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>,
             BarChart: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><line x1="12" x2="12" y1="20" y2="10"/><line x1="18" x2="18" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="16"/></svg>,
             Cloud: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M17.5 19c0-1.7-1.3-3-3-3h-1.1c-.2-2.3-2.1-4-4.4-4-2.6 0-4.6 2.1-4.6 4.6 0 .3.1.6.2.9C2.7 17.8 1.5 19.5 1.5 21.5c0 2.5 2 4.5 4.5 4.5h11.5c2.5 0 4.5-2 4.5-4.5s-2-4.5-4.5-4.5z"/></svg>,
-            Check: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polyline points="20 6 9 17 4 12"/></svg>
+            History: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/></svg>
         };
 
         // --- UI Components ---
@@ -104,15 +95,10 @@
             const variants = {
                 default: "bg-blue-600 text-white hover:bg-blue-700",
                 outline: "border border-input bg-background hover:bg-slate-100 hover:text-slate-900",
-                ghost: "hover:bg-slate-100 hover:text-slate-900",
-                destructive: "bg-red-500 text-white hover:bg-red-600",
-                secondary: "bg-slate-600 text-white hover:bg-slate-700"
+                secondary: "bg-slate-600 text-white hover:bg-slate-700",
+                destructive: "bg-red-500 text-white hover:bg-red-600"
             };
-            const sizes = {
-                default: "h-10 px-4 py-2",
-                sm: "h-8 rounded-md px-3 text-xs",
-                icon: "h-10 w-10"
-            };
+            const sizes = { default: "h-10 px-4 py-2", sm: "h-8 rounded-md px-3 text-xs", icon: "h-10 w-10" };
             return <button disabled={disabled} className={`${baseStyles} ${variants[variant] || variants.default} ${sizes[size] || sizes.default} ${className}`} onClick={onClick} title={title}>{children}</button>;
         };
         const Input = ({ className, ...props }) => (
@@ -120,13 +106,11 @@
         );
         const Badge = ({ variant = "default", className, children }) => {
             const variants = {
-                default: "border-transparent bg-blue-600 text-white hover:bg-blue-700",
-                outline: "text-slate-950 border-slate-200",
-                success: "bg-green-500 text-white border-transparent",
-                warning: "bg-amber-500 text-white border-transparent",
-                destructive: "bg-red-500 text-white border-transparent"
+                default: "bg-blue-600 text-white",
+                warning: "bg-amber-500 text-white",
+                destructive: "bg-red-500 text-white"
             };
-            return <div className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${variants[variant]} ${className}`}>{children}</div>;
+            return <div className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${variants[variant]} ${className}`}>{children}</div>;
         };
         const Modal = ({ isOpen, onClose, title, children }) => {
             if (!isOpen) return null;
@@ -143,7 +127,6 @@
             );
         };
 
-        // --- Structures ---
         const QUARTERLY_STRUCTURE = [
             { id: 'section1', title: '一、主動性 (30%)', weight: 30, maxRawScore: 35, items: [{ id: '1.1', text: '1.1 期限內繳交服務卡、服務紀錄單' }, { id: '1.2', text: '1.2 每月參加團督會議' }, { id: '1.3', text: '1.3 每月參加在職教育訓練' }, { id: '1.4', text: '1.4 積極提升自我專業能力' }, { id: '1.5', text: '1.5 主動且及時向督導反映個案問題' }, { id: '1.6', text: '1.6 回報特殊事件的積極性' }, { id: '1.7', text: '1.7 主動繳交服務相關費用' }] },
             { id: 'section2', title: '二、工作能力 (40%)', weight: 40, maxRawScore: 25, items: [{ id: '2.1', text: '2.1 服務時間準確，無遲到早退' }, { id: '2.2', text: '2.2 APP定位狀況良好' }, { id: '2.3', text: '2.3 工作內容執行正確' }, { id: '2.4', text: '2.4 照顧技巧熟練度與正確性' }, { id: '2.5', text: '2.5 意外事件應變能力' }] },
@@ -156,11 +139,23 @@
             { id: 'annual_loyalty', title: '向心力與個人素養考核 (37%)', items: [{ id: 'b.1', text: '1. 謙遜有禮，落實職場倫理', max: 7 }, { id: 'b.2', text: '2. 對機構向心力佳，維護信譽', max: 7 }, { id: 'b.3', text: '3. 樂於分享工作技巧，不藏私', max: 8 }, { id: 'b.4', text: '4. 勇於承擔錯誤並修正，不說謊', max: 8 }, { id: 'b.5', text: '5. 以機構最大利益為考量，無違法風險', max: 7 }] }
         ];
 
-        // --- Logic ---
         const getRecordKey = (sId, year, q) => `${sId}_${year}_${q}`;
 
+        // Modified Calculation Logic
         const calculateQuarterly = (record) => {
             if (!record) return { total: 0, details: [], bonus: 0, penalty: 0 };
+            
+            // Priority check: Manual Score
+            if (record.manualScore !== undefined && record.manualScore !== '' && record.manualScore !== null) {
+                return {
+                    total: parseFloat(record.manualScore).toFixed(2),
+                    details: [{ title: '歷史成績直接補登', raw: '-', weighted: parseFloat(record.manualScore).toFixed(2) }],
+                    bonusData: {},
+                    isNewHire: record.isNewHire,
+                    isManual: true
+                };
+            }
+
             const scores = record.scores || {};
             const bonusData = record.bonus || {};
             let totalWeighted = 0, details = [];
@@ -180,7 +175,7 @@
             const pAudit = (bonusData.auditError||0)*3;
             const pComplaint = (bonusData.complaint||0)*2;
             const final = totalWeighted + bNewStaff + bNewCase + bInnovation - pAudit - pComplaint;
-            return { total: final.toFixed(2), details, bonusData, isNewHire: record.isNewHire };
+            return { total: final.toFixed(2), details, bonusData, isNewHire: record.isNewHire, isManual: false };
         };
 
         const calculateAnnual = (sId, year, allData) => {
@@ -196,6 +191,7 @@
             });
             const qAvg = qCount > 0 ? (qSum / qCount) : 0;
             const annualFromQuarter = qAvg * 0.15;
+            
             const annualKey = getRecordKey(sId, year, 'ANNUAL');
             const record = allData[annualKey] || {};
             const scores = record.scores || {};
@@ -257,7 +253,6 @@
             );
         };
 
-        // --- Main App ---
         function App() {
             const [viewMode, setViewMode] = useState('individual');
             const [currentYear, setCurrentYear] = useState(114);
@@ -268,39 +263,25 @@
             const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
             const [editingStaff, setEditingStaff] = useState(null);
             const fileInputRef = useRef(null);
-            
-            // Loading State
             const [loading, setLoading] = useState(true);
             const [saving, setSaving] = useState(false);
 
-            // Firebase Subscription
             useEffect(() => {
-                if (!window.FirebaseAPI) {
-                    alert("Firebase SDK 未載入");
-                    return;
-                }
+                if (!window.FirebaseAPI) return;
                 const unsubscribe = window.FirebaseAPI.subscribe((data) => {
-                    console.log("收到雲端資料更新", data);
-                    if (data) {
-                        setStaffList(data.staffList || []);
-                        setAllData(data.allData || {});
-                    }
+                    if (data) { setStaffList(data.staffList || []); setAllData(data.allData || {}); }
                     setLoading(false);
                 });
-                return () => unsubscribe(); // Cleanup listener on unmount
+                return () => unsubscribe();
             }, []);
 
-            // Auto-select first staff
             useEffect(() => {
-                if (!selectedStaffId && staffList.length > 0 && !loading) {
-                    setSelectedStaffId(staffList[0].id);
-                }
+                if (!selectedStaffId && staffList.length > 0 && !loading) setSelectedStaffId(staffList[0].id);
             }, [staffList, loading, selectedStaffId]);
 
-            // Save Function (Debounced ideally, but direct for simplicity)
             const saveToFirebase = async (newList, newData) => {
                 setSaving(true);
-                const success = await window.FirebaseAPI.saveAll(newList, newData);
+                await window.FirebaseAPI.saveAll(newList, newData);
                 setSaving(false);
             };
 
@@ -319,19 +300,9 @@
             const handleSaveStaff = (e) => {
                 e.preventDefault();
                 const formData = new FormData(e.target);
-                const newStaff = {
-                    id: editingStaff?.id || Date.now(),
-                    name: formData.get('name'),
-                    onboardDate: formData.get('onboardDate'),
-                    resignDate: formData.get('resignDate'),
-                };
-                let newList;
-                if (editingStaff) {
-                    newList = staffList.map(s => s.id === editingStaff.id ? newStaff : s);
-                } else {
-                    newList = [...staffList, newStaff];
-                    setSelectedStaffId(newStaff.id);
-                }
+                const newStaff = { id: editingStaff?.id || Date.now(), name: formData.get('name'), onboardDate: formData.get('onboardDate'), resignDate: formData.get('resignDate') };
+                let newList = editingStaff ? staffList.map(s => s.id === editingStaff.id ? newStaff : s) : [...staffList, newStaff];
+                if (!editingStaff) setSelectedStaffId(newStaff.id);
                 setStaffList(newList);
                 saveToFirebase(newList, allData);
                 setIsStaffModalOpen(false);
@@ -339,7 +310,7 @@
             };
 
             const handleDeleteStaff = (id) => {
-                if(confirm('確定刪除此員工資料？(注意：這會同步刪除雲端上的名單)')) {
+                if(confirm('確定刪除此員工資料？')) {
                     const newList = staffList.filter(s => s.id !== id);
                     setStaffList(newList);
                     if (selectedStaffId === id) setSelectedStaffId(null);
@@ -347,26 +318,13 @@
                 }
             };
 
-            // Unified Update Logic
-            const updateAndSave = (newData) => {
-                setAllData(newData);
-                saveToFirebase(staffList, newData);
-            };
-
-            const updateRecord = (key, field, value) => {
-                const newData = { ...allData, [key]: { ...allData[key], [field]: value } };
-                updateAndSave(newData);
-            };
-            const updateBonus = (key, field, val) => {
-                const num = val === '' ? '' : parseFloat(val);
-                const newData = { ...allData, [key]: { ...allData[key], bonus: { ...allData[key]?.bonus, [field]: num } } };
-                updateAndSave(newData);
-            };
+            const updateAndSave = (newData) => { setAllData(newData); saveToFirebase(staffList, newData); };
+            const updateRecord = (key, field, value) => updateAndSave({ ...allData, [key]: { ...allData[key], [field]: value } });
+            const updateBonus = (key, field, val) => updateAndSave({ ...allData, [key]: { ...allData[key], bonus: { ...allData[key]?.bonus, [field]: val === '' ? '' : parseFloat(val) } } });
             const updateScore = (key, itemId, role, val) => {
                 let num = val === '' ? '' : parseFloat(val);
                 if (num !== '' && num > 100) num = 100;
-                const newData = { ...allData, [key]: { ...allData[key], scores: { ...allData[key]?.scores, [itemId]: { ...allData[key]?.scores?.[itemId], [role]: num } } } };
-                updateAndSave(newData);
+                updateAndSave({ ...allData, [key]: { ...allData[key], scores: { ...allData[key]?.scores, [itemId]: { ...allData[key]?.scores?.[itemId], [role]: num } } } });
             };
 
             const handleFileUpload = (e) => {
@@ -376,52 +334,37 @@
                 reader.onload = (evt) => {
                     try {
                         const parsed = JSON.parse(evt.target.result);
-                        if (parsed.staffList && parsed.allData) {
-                            if(confirm("確定要匯入此檔案嗎？這將會覆蓋【雲端資料庫】的所有內容！")) {
-                                setStaffList(parsed.staffList);
-                                setAllData(parsed.allData);
-                                saveToFirebase(parsed.staffList, parsed.allData);
-                                alert("匯入並上傳雲端成功！");
-                            }
-                        } else {
-                            alert("檔案格式錯誤");
+                        if (parsed.staffList && parsed.allData && confirm("匯入將覆蓋雲端資料，確定？")) {
+                            setStaffList(parsed.staffList);
+                            setAllData(parsed.allData);
+                            saveToFirebase(parsed.staffList, parsed.allData);
                         }
-                    } catch (err) {
-                        alert("讀取檔案失敗");
-                    }
+                    } catch (err) { alert("讀取失敗"); }
                 };
                 reader.readAsText(file);
                 e.target.value = null;
             };
 
             const downloadData = () => {
-                const dataStr = JSON.stringify({ staffList, allData, version: "v4_firebase" }, null, 2);
-                const blob = new Blob([dataStr], { type: "application/json" });
-                const url = URL.createObjectURL(blob);
+                const blob = new Blob([JSON.stringify({ staffList, allData, version: "v4_firebase" }, null, 2)], { type: "application/json" });
                 const a = document.createElement("a");
-                a.href = url;
+                a.href = URL.createObjectURL(blob);
                 a.download = `居服員考核雲端備份_${new Date().toISOString().slice(0,10)}.json`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
+                document.body.appendChild(a); a.click(); document.body.removeChild(a);
             };
 
-            // Current View Vars
             const currentStaff = staffList.find(s => s.id === selectedStaffId);
             const recordKey = selectedStaffId ? getRecordKey(selectedStaffId, currentYear, currentQuarter) : null;
             const currentRecord = allData[recordKey] || {};
 
-            if (loading) {
-                return <div className="h-screen w-full flex items-center justify-center bg-slate-50 text-slate-500 font-bold animate-pulse">正在連線至雲端資料庫...</div>;
-            }
+            if (loading) return <div className="h-screen w-full flex items-center justify-center bg-slate-50 text-slate-500 font-bold animate-pulse">連線雲端資料庫中...</div>;
 
             return (
                 <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
-                    {/* Header */}
                     <header className="bg-white border-b px-6 py-4 flex items-center justify-between sticky top-0 z-20 shadow-sm">
                         <div className="flex items-center gap-3">
                             <div className="bg-blue-600 p-2 rounded-lg"><Icons.Cloud className="h-5 w-5 text-white" /></div>
-                            <h1 className="text-xl font-bold text-slate-800 hidden md:block">光祐居服員考核系統 <span className="text-sm font-normal text-slate-500 ml-2">v4.0 雲端協作版</span></h1>
+                            <h1 className="text-xl font-bold text-slate-800 hidden md:block">光祐居服員考核系統 <span className="text-sm font-normal text-slate-500 ml-2">v4.1 補登版</span></h1>
                         </div>
                         <div className="flex items-center gap-2">
                             <div className="flex bg-slate-100 rounded p-1 mr-4">
@@ -466,7 +409,7 @@
                                             <div><h2 className="text-2xl font-bold text-slate-800">{staffList.find(s=>s.id===selectedStaffId)?.name}</h2><p className="text-slate-500 text-sm flex items-center gap-2"><Icons.Calendar className="h-4 w-4"/> {currentYear}年 {currentQuarter==='ANNUAL'?'年度考核':currentQuarter+' 季考核'}</p></div>
                                         </div>
                                         {currentQuarter === 'ANNUAL' ? 
-                                            // Annual Render Logic (Copied from previous ver)
+                                            // Annual Render
                                             (() => {
                                                 const res = calculateAnnual(selectedStaffId, currentYear, allData);
                                                 const scores = currentRecord.scores || {};
@@ -483,12 +426,35 @@
                                                 </div>;
                                             })()
                                         : 
-                                            // Quarterly Render Logic
+                                            // Quarterly Render
                                             (() => {
                                                 const result = calculateQuarterly(currentRecord);
                                                 return <div className="space-y-6 animate-in fade-in duration-300">
-                                                    <div className="flex items-center space-x-2 bg-yellow-50 p-3 rounded border border-yellow-200"><input type="checkbox" id="isNewHire" checked={currentRecord.isNewHire || false} onChange={(e) => updateRecord(recordKey, 'isNewHire', e.target.checked)} className="w-4 h-4 text-blue-600 rounded" /><label htmlFor="isNewHire" className="text-sm font-medium text-slate-800">此考核為「新進人員/試用期」考核 (勾選後，此分數將<span className="text-red-600 font-bold">不列入</span>年度平均計算)</label></div>
-                                                    <div className="grid md:grid-cols-2 gap-4"><div className="space-y-4"><Card><CardContent className="pt-6"><h3 className="font-bold mb-4 flex items-center gap-2"><Icons.Trophy className="h-4 w-4 text-amber-500"/> 加扣分</h3><div className="grid grid-cols-2 gap-4 text-sm"><label>介紹新人 (人)</label><Input type="number" value={currentRecord.bonus?.newStaff||''} onChange={e=>updateBonus(recordKey, 'newStaff', e.target.value)} /><label>介紹個案 (案)</label><Input type="number" value={currentRecord.bonus?.newCase||''} onChange={e=>updateBonus(recordKey, 'newCase', e.target.value)} /><label>創新經驗 (分)</label><Input type="number" value={currentRecord.bonus?.innovation||''} onChange={e=>updateBonus(recordKey, 'innovation', e.target.value)} /><label className="text-red-600">稽核異常 (項)</label><Input type="number" value={currentRecord.bonus?.auditError||''} onChange={e=>updateBonus(recordKey, 'auditError', e.target.value)} /><label className="text-red-600">申訴屬實 (案)</label><Input type="number" value={currentRecord.bonus?.complaint||''} onChange={e=>updateBonus(recordKey, 'complaint', e.target.value)} /></div></CardContent></Card>{QUARTERLY_STRUCTURE.map(sec => (<Card key={sec.id}><CardHeader className="py-3 bg-slate-50"><CardTitle className="text-base">{sec.title}</CardTitle></CardHeader><CardContent className="p-0"><table className="w-full text-sm"><thead className="bg-slate-100 text-xs text-slate-500"><tr><th className="p-2 text-left">項目</th><th className="w-12 text-center">自評</th><th className="w-12 text-center">督導</th><th className="w-12 text-center">主任</th></tr></thead><tbody className="divide-y">{sec.items.map(item => {const s = currentRecord.scores?.[item.id] || {}; return <tr key={item.id}><td className="p-2">{item.text}</td><td className="p-1"><Input className="text-center px-0" value={s.self||''} onChange={e=>updateScore(recordKey, item.id, 'self', e.target.value)} /></td><td className="p-1"><Input className="text-center px-0 bg-blue-50" value={s.sup||''} onChange={e=>updateScore(recordKey, item.id, 'sup', e.target.value)} /></td><td className="p-1"><Input className="text-center px-0" value={s.dir||''} onChange={e=>updateScore(recordKey, item.id, 'dir', e.target.value)} /></td></tr>;})}</tbody></table></CardContent></Card>))}</div><div className="space-y-4"><Card className="bg-slate-800 text-white border-none sticky top-4"><CardHeader><CardTitle>本季成績單</CardTitle></CardHeader><CardContent><div className="text-5xl font-bold font-mono text-center mb-4">{result.total}</div><div className="space-y-2 text-sm text-slate-300">{result.details.map((d,i) => (<div key={i} className="flex justify-between border-b border-slate-700 pb-1"><span>{d.title}</span><span>{d.weighted}</span></div>))}</div>{currentRecord.isNewHire && <div className="mt-4 text-center bg-yellow-500/20 text-yellow-300 py-1 rounded">試用期 / 不計入年度</div>}</CardContent></Card></div></div>
+                                                    
+                                                    {/* Manual Score Input Section */}
+                                                    <Card className="border-purple-200 bg-purple-50">
+                                                        <CardContent className="pt-6 flex flex-col md:flex-row items-center justify-between gap-4">
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="bg-purple-200 p-2 rounded-full"><Icons.History className="w-5 h-5 text-purple-700"/></div>
+                                                                <div>
+                                                                    <label className="font-bold text-purple-800 text-lg">歷史成績快速補登 (總分)</label>
+                                                                    <p className="text-xs text-purple-600">若有填寫此欄，將直接使用此分數，忽略下方評核表。</p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex items-center gap-3">
+                                                                <span className="font-bold text-slate-600">本季總分：</span>
+                                                                <Input type="number" className="w-32 bg-white font-bold text-lg h-12 text-center border-purple-300 focus:ring-purple-500" placeholder="0.00" value={currentRecord.manualScore || ''} onChange={(e) => updateRecord(recordKey, 'manualScore', e.target.value)} />
+                                                            </div>
+                                                        </CardContent>
+                                                    </Card>
+
+                                                    {/* Hide details if manual score is active */}
+                                                    {!result.isManual && (
+                                                        <>
+                                                            <div className="flex items-center space-x-2 bg-yellow-50 p-3 rounded border border-yellow-200"><input type="checkbox" id="isNewHire" checked={currentRecord.isNewHire || false} onChange={(e) => updateRecord(recordKey, 'isNewHire', e.target.checked)} className="w-4 h-4 text-blue-600 rounded" /><label htmlFor="isNewHire" className="text-sm font-medium text-slate-800">此考核為「新進人員/試用期」考核 (勾選後，此分數將<span className="text-red-600 font-bold">不列入</span>年度平均計算)</label></div>
+                                                            <div className="grid md:grid-cols-2 gap-4"><div className="space-y-4"><Card><CardContent className="pt-6"><h3 className="font-bold mb-4 flex items-center gap-2"><Icons.Trophy className="h-4 w-4 text-amber-500"/> 加扣分</h3><div className="grid grid-cols-2 gap-4 text-sm"><label>介紹新人 (人)</label><Input type="number" value={currentRecord.bonus?.newStaff||''} onChange={e=>updateBonus(recordKey, 'newStaff', e.target.value)} /><label>介紹個案 (案)</label><Input type="number" value={currentRecord.bonus?.newCase||''} onChange={e=>updateBonus(recordKey, 'newCase', e.target.value)} /><label>創新經驗 (分)</label><Input type="number" value={currentRecord.bonus?.innovation||''} onChange={e=>updateBonus(recordKey, 'innovation', e.target.value)} /><label className="text-red-600">稽核異常 (項)</label><Input type="number" value={currentRecord.bonus?.auditError||''} onChange={e=>updateBonus(recordKey, 'auditError', e.target.value)} /><label className="text-red-600">申訴屬實 (案)</label><Input type="number" value={currentRecord.bonus?.complaint||''} onChange={e=>updateBonus(recordKey, 'complaint', e.target.value)} /></div></CardContent></Card>{QUARTERLY_STRUCTURE.map(sec => (<Card key={sec.id}><CardHeader className="py-3 bg-slate-50"><CardTitle className="text-base">{sec.title}</CardTitle></CardHeader><CardContent className="p-0"><table className="w-full text-sm"><thead className="bg-slate-100 text-xs text-slate-500"><tr><th className="p-2 text-left">項目</th><th className="w-12 text-center">自評</th><th className="w-12 text-center">督導</th><th className="w-12 text-center">主任</th></tr></thead><tbody className="divide-y">{sec.items.map(item => {const s = currentRecord.scores?.[item.id] || {}; return <tr key={item.id}><td className="p-2">{item.text}</td><td className="p-1"><Input className="text-center px-0" value={s.self||''} onChange={e=>updateScore(recordKey, item.id, 'self', e.target.value)} /></td><td className="p-1"><Input className="text-center px-0 bg-blue-50" value={s.sup||''} onChange={e=>updateScore(recordKey, item.id, 'sup', e.target.value)} /></td><td className="p-1"><Input className="text-center px-0" value={s.dir||''} onChange={e=>updateScore(recordKey, item.id, 'dir', e.target.value)} /></td></tr>;})}</tbody></table></CardContent></Card>))}</div><div className="space-y-4"><Card className="bg-slate-800 text-white border-none sticky top-4"><CardHeader><CardTitle>本季成績單</CardTitle></CardHeader><CardContent><div className="text-5xl font-bold font-mono text-center mb-4">{result.total}</div><div className="space-y-2 text-sm text-slate-300">{result.details.map((d,i) => (<div key={i} className="flex justify-between border-b border-slate-700 pb-1"><span>{d.title}</span><span>{d.weighted}</span></div>))}</div>{currentRecord.isNewHire && <div className="mt-4 text-center bg-yellow-500/20 text-yellow-300 py-1 rounded">試用期 / 不計入年度</div>}</CardContent></Card></div></div>
+                                                        </>
+                                                    )}
                                                 </div>;
                                             })()
                                         }
